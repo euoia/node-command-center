@@ -1,0 +1,15 @@
+{
+  "name": "node-iochat",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+  },
+  "dependencies": {
+    "ejs": "*",
+    "socket.io": "~0.9.13",
+    "less-middleware": "~0.1.9",
+    "connect-redis": "~1.4.5",
+    "session.socket.io": "git://github.com/euoia/session.socket.io#master",
+    "underscore": "~1.4.3"
+  }
+}
