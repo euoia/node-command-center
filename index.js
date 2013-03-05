@@ -1,6 +1,5 @@
 var sio = require('socket.io'),
 	SessionSockets = require('session.socket.io'),
-	parseCookie = require('connect').utils.parseCookie,
 	_ = require('underscore');
 
 
