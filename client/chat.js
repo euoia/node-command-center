@@ -8,89 +8,90 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 		// TODO: Handle multiple rooms AT THE SAME TIME.
 		this.username = options.username;
 		this.roomName = options.roomName;
+		this.commands = options.commands;
 		this.userListDiv = $(options.userListDiv);
 		this.messagesUl = $(options.messagesUl);
 		this.messageScroll = $(options.messageScroll);
 		this.messageEntryForm = $(options.messageEntryForm);
 		this.messageEntry = $(options.messageEntry);
 		this.socket = null;
+		this.roomUserList = null; // UL of users in room.
 
 		console.log('new chat, roomName: ' + this.roomName);
-
-		// User commands.
-		this.commands = {
-			'userList': this.userListCmd
-		};
-
-		_.extend(this.commands, options.commands);
-		this.commands['logout'] = this.logoutCmd.bind(this, this.commands['logout']);
 
 		// Bind to the message entry form.
 		this.messageEntryForm.submit(function() {
 			$this.handleMessageInput.call($this);
 			return false;
 		});
+
+		// Init user list HMTL.
+		$this.initUserList();
 	}
 
 	Chat.prototype.connect = function(roomName) {
 		this.roomName = roomName;
 		console.log('connecting, this.roomName: ' + this.roomName);
 
+
 		if (this.socket === null) {
 			console.log('connecting for the first time');
 			this.socket = io.connect('http://localhost');
+			this.listen();
 		} else {
 			console.log('reconnecting');
-			this.socket.socket.connect();
+			this.socket.socket.reconnect();
 		}
 
-		this.listen();
 	};
 
 	Chat.prototype.disconnect = function() {
 		console.log('disconnect');
 		this.socket.disconnect();
-		this.socket.removeAllListeners('connect');
-		this.socket.removeAllListeners('message');
-		this.socket.removeAllListeners('userList');
 	};
 
 	// Set up socket listeners.
 	Chat.prototype.listen = function() {
+		console.log('Setting up listeners...');
+
 		if (this.roomName === undefined) {
 			alert('Cannot listen without a room name');
 		}
 		var $this = this;
 
-		console.log('roomName is ' + this.roomName);
+		console.log('(roomName is ' + this.roomName + ')');
 
-		console.log('listening');
+		this.socket.on('userList', function(data) {
+			console.log('userList event');
+			$this.updateUserList(data.users);
+		});
+
 		this.socket.on('connect', function() {
-			console.log('subscribing to ' + $this.roomName);
+			console.log('connect event');
 
+			console.log('emit subscribe. roomName:' + $this.roomName);
 			$this.socket.emit('subscribe', {
 				roomName: $this.roomName
 			});
 		});
 
 		this.socket.on('message', function(data) {
-			console.log('onmessage');
+			console.log('message event');
 			$this.addMessage(data.time, data.username, data.message);
 		});
 
-		this.socket.on('userList', function(data) {
-			$this.updateUserList(data.users);
-		});
+		console.log('Finished setting up listeners...');
 	};
 
-	Chat.prototype.updateUserList = function(users) {
-		var userListContent;
-
+	Chat.prototype.initUserList = function(users) {
 		$('<div class="roomName">' + this.roomName + ' users</div>')
 			.appendTo(this.userListDiv);
 
-		$('<ul id="roomUserList" />').appendTo(this.userListDiv);
+		this.roomUserList = $('<ul id="roomUserList" />').appendTo(this.userListDiv);
+	};
 
+	Chat.prototype.updateUserList = function(users) {
+		this.roomUserList.html('');
 
 		for (i in users) {
 			$('<li class="username">' + users[i] + '</li>').appendTo('#roomUserList');
@@ -170,20 +171,20 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 		}
 	};
 
-	Chat.prototype.userListCmd = function() {
+	Chat.prototype.refreshUserList = function() {
 		this.socket.emit('userList', {
-			roomName: chat.roomName
+			roomName: this.roomName
 		});
 	};
 
 	Chat.prototype.destroy = function() {
+		console.log('Chat destroy');
 		this.userListDiv.html('');
 	};
 
-	Chat.prototype.logoutCmd = function(originalLogoutCmd) {
-		console.log('logoutCmd');
+	Chat.prototype.logout = function() {
+		console.log('Chat logout');
 		this.disconnect();
-		originalLogoutCmd();
 	};
 
 	return Chat;

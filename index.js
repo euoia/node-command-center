@@ -2,6 +2,9 @@ var sio = require('socket.io'),
 	SessionSockets = require('session.socket.io'),
 	_ = require('underscore');
 
+// Adds the following keys to the session:
+// rooms - An array of room names that the session is currently present in.
+//         This is used for rejoining when the client sends a checkSession request.
 
 Chat = function(server, sessionStore, cookieParser) {
 	this.io = sio.listen(server);
@@ -24,7 +27,7 @@ Chat.prototype.setupListeners = function() {
 			console.log('subscribe');
 			console.log(data);
 			if (data.roomName === undefined) {
-				console.log(session.username + ' tried to subscribe but did not specify a room name so it is being discarded.');
+				console.log(session.username + ' tried to subscribe but did not specify a room name.');
 				return;
 			}
 
@@ -32,17 +35,20 @@ Chat.prototype.setupListeners = function() {
 
 			var usernamesInRoomBeforeJoining = _.pluck($this.io.sockets.clients(data.roomName), 'username');
 
-			// Add the socket to the room. A player may have multiple tabs open.
+			// Add the socket to the room.
 			socket.join(data.roomName);
+
+			// Add the room name to the session.
+			if (_.contains(session.rooms, data.roomName) === false) {
+				session.rooms.push(data.roomName);
+				session.save();
+			}
 
 			var usernamesInRoomAfterJoining = _.pluck($this.io.sockets.clients(data.roomName), 'username');
 
 			// Send the user list to the socket.
 			// A user may have multiple sockets open so we need the unique list of usernames.
-			socket.emit('userList', {
-				users: _.uniq(usernamesInRoomAfterJoining),
-				roomName: data.roomName
-			});
+			$this.emitUserList(socket, data.roomName, _.uniq(usernamesInRoomAfterJoining));
 
 			// If already present, the socket needs to join, but do not notify the room.
 			if (_.contains(usernamesInRoomBeforeJoining, socket.username)) {
@@ -68,9 +74,7 @@ Chat.prototype.setupListeners = function() {
 					message: session.username + ' has joined ' + data.roomName + '.'
 				});
 
-				socket.broadcast.to(data.roomName).emit('userList', {
-					users: _.uniq(usernamesInRoomAfterJoining)
-				});
+				$this.broadcastUserList(socket, data.roomName, _.uniq(usernamesInRoomAfterJoining));
 			}
 		});
 
@@ -126,7 +130,7 @@ Chat.prototype.setupListeners = function() {
 
 					console.log('$this:');
 					console.log($this);
-					$this.sendUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
+					$this.broadcastUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
 				}
 			}
 		});
@@ -170,17 +174,35 @@ Chat.prototype.setupListeners = function() {
 			var users = _.pluck($this.io.sockets.clients(data.roomName), 'username');
 			console.log(users);
 
-			this.sendUserList(socket, data.roomName, users);
+			$this.emitUserList(socket, data.roomName, users);
 		});
 
 	});
 };
 
-Chat.prototype.sendUserList = function(socket, roomName, userList) {
+Chat.prototype.emitUserList = function(socket, roomName, userList) {
+	socket.emit('userList', {
+		roomName: roomName,
+		users: userList
+	});
+};
+
+Chat.prototype.broadcastUserList = function(socket, roomName, userList) {
 	socket.broadcast.to(roomName).emit('userList', {
 		roomName: roomName,
 		users: userList
 	});
+};
+
+// ----------------------
+// Static methods.
+// ----------------------
+
+// Chat.initSession.
+// Initialize the express session object.
+Chat.initSession = function(session) {
+	console.log('initSession',session);
+	session.rooms = [];
 };
 
 module.exports = Chat;
