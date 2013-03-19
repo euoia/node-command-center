@@ -38,7 +38,7 @@ Chat = function(server, sessionStore, cookieParser) {
 
 			// Send the user list to the socket.
 			// A user may have multiple sockets open so we need the unique list of usernames.
-			$this.sendUserList(socket, data.roomName, _.uniq(usernamesInRoomAfterJoining));
+			$this.sendUserList(socket, data.roomName);
 
 			// If already present, the socket needs to join, but do not notify the room.
 			if (_.contains(usernamesInRoomBeforeJoining, socket.username)) {
@@ -86,10 +86,10 @@ Chat = function(server, sessionStore, cookieParser) {
 				// Only display the disconnect message if this is the last socket the
 				// user has open to the room.
 				if (timesInRoom === 1) {
-					$this.sendRoomMessage(socket, room, 'admin', room, util.format('%s has disconnected from %s.', session.username, room));
+					$this.sendRoomMessage(socket, room, 'admin', util.format('%s has disconnected from %s.', session.username, room));
 					$this.broadcastUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
 				}
-			};
+			}
 		},
 		'message': function(socket, session, data) {
 			console.log('message');
@@ -121,17 +121,14 @@ Chat = function(server, sessionStore, cookieParser) {
 			}
 			console.log(session.username + ' requested userList.');
 
-			var users = _.pluck($this.io.sockets.clients(data.roomName), 'username');
-			console.log(users);
-
-			$this.sendUserList(socket, data.roomName, users);
+			$this.sendUserList(socket, data.roomName);
 		}
 	};
 
 	this.io = sio.listen(server);
-	this.sessionSockets = new SessionSockets(this.io, sessionStore, cookieParser),
+	this.sessionSockets = new SessionSockets(this.io, sessionStore, cookieParser);
 	this.setupListeners();
-}
+};
 
 Chat.prototype.setupListeners = function() {
 	var $this = this;
@@ -152,10 +149,13 @@ Chat.prototype.setupListeners = function() {
 	});
 };
 
-Chat.prototype.sendUserList = function(socket, roomName, userList) {
+Chat.prototype.sendUserList = function(socket, roomName) {
+	var users = _.pluck(this.io.sockets.clients(roomName), 'username');
+	users = _.uniq(users);
+
 	socket.emit('userList', {
 		roomName: roomName,
-		users: userList
+		users: users
 	});
 };
 
@@ -203,13 +203,11 @@ Chat.prototype.sendNotification = function(socket, message, roomName) {
 	});
 };
 
-
 // Allow the client code to add additional socket events.
 Chat.prototype.addSocketEvent = function (event, fn) {
 	console.log ('Adding socket event: ' + event);
 	this.socketEvents[event] = fn;
 };
-
 
 // ----------------------
 // Static methods.
