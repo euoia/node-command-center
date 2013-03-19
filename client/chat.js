@@ -52,35 +52,35 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 
 	// Set up socket listeners.
 	Chat.prototype.listen = function() {
-		console.log('Setting up listeners...');
-
 		if (this.roomName === undefined) {
 			alert('Cannot listen without a room name');
 		}
+
 		var $this = this;
 
-		console.log('(roomName is ' + this.roomName + ')');
-
-		this.socket.on('userList', function(data) {
-			console.log('userList event');
-			$this.updateUserList(data.users);
-		});
-
+		// Upon connecting with the socket.
 		this.socket.on('connect', function() {
-			console.log('connect event');
-
-			console.log('emit subscribe. roomName:' + $this.roomName);
 			$this.socket.emit('subscribe', {
 				roomName: $this.roomName
 			});
 		});
 
+		// Receive a user list for a room.
+		this.socket.on('userList', function(data) {
+			$this.updateUserList(data.users);
+		});
+
+		// Receive a message.
+		// Note that data.roomName is optional.
 		this.socket.on('message', function(data) {
-			console.log('message event');
 			$this.addMessage(data.time, data.username, data.message);
 		});
 
-		console.log('Finished setting up listeners...');
+		// Receive a notification.
+		// Note that data.roomName is optional.
+		this.socket.on('notification', function(data) {
+			$this.addNotification(data.time, data.username, data.message);
+		});
 	};
 
 	Chat.prototype.initUserList = function(users) {
@@ -120,7 +120,16 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 		this.scrollDown();
 	};
 
-	// TODO: Move this into utils.
+	Chat.prototype.addNotification = function(time, username, message) {
+		this.messagesUl.append(
+			"<li class='notification'>" +
+			"<span class='timestamp'>[" + this.formatDate(time) + "] </span>" +
+			"<span class='notification'>" + message + "</span>" +
+			"</li>");
+
+		this.scrollDown();
+	};
+
 	Chat.prototype.formatDate = function(dateStr) {
 		var d = new Date(dateStr);
 
@@ -128,7 +137,6 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 			":" + this.formatNumberLength(d.getMinutes(), 2);
 	};
 
-	// TODO: Move this into utils.
 	Chat.prototype.formatNumberLength = function(num, length) {
 		var r = "" + num;
 		while (r.length < length) {
@@ -178,13 +186,16 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 	};
 
 	Chat.prototype.destroy = function() {
-		console.log('Chat destroy');
 		this.userListDiv.html('');
 	};
 
 	Chat.prototype.logout = function() {
-		console.log('Chat logout');
 		this.disconnect();
+	};
+
+	// TODO: We should be able to add this command from a separate game module.
+	Chat.prototype.listGames = function () {
+		this.socket.emit('listGames');
 	};
 
 	return Chat;

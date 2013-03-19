@@ -11,17 +11,12 @@ Chat = function(server, sessionStore, cookieParser) {
 	var $this = this;
 
 	// Array of socket events that can be handled.
-	// TODO: Reduce the LOC.
 	this.socketEvents  = {
 		'subscribe': function(socket, session, data) {
-			console.log('subscribe');
-			console.log(data);
 			if (data.roomName === undefined) {
-				console.log(session.username + ' tried to subscribe but did not specify a room name.');
+				console.log('%s sent subscribe but did not specify a roomName.', session.username);
 				return;
 			}
-
-			console.log(session.username + ' joined ' + data.roomName);
 
 			var usernamesInRoomBeforeJoining = _.pluck($this.io.sockets.clients(data.roomName), 'username');
 
@@ -37,90 +32,84 @@ Chat = function(server, sessionStore, cookieParser) {
 			var usernamesInRoomAfterJoining = _.pluck($this.io.sockets.clients(data.roomName), 'username');
 
 			// Send the user list to the socket.
-			// A user may have multiple sockets open so we need the unique list of usernames.
+			// A user may have multiple socket connections so we need the unique list of usernames.
 			$this.sendUserList(socket, data.roomName);
 
 			// If already present, the socket needs to join, but do not notify the room.
 			if (_.contains(usernamesInRoomBeforeJoining, socket.username)) {
-				$this.sendMessage(socket, 'admin', util.format('You have rejoined %s.', data.roomName), data.roomName);
+				$this.sendNotification(socket, util.format('You have rejoined %s.', data.roomName), data.roomName);
 			} else {
-				$this.sendMessage(socket, 'admin', util.format('You have joined %s.', data.roomName), data.roomName);
-				$this.sendRoomMessage(socket, data.roomName, 'admin', util.format('%s has joined %s.', session.username, data.roomName));
+				$this.sendNotification(socket, util.format('You have joined %s.', data.roomName), data.roomName);
+				$this.sendRoomNotification(socket, data.roomName, util.format('%s has joined %s.', session.username, data.roomName));
 				$this.broadcastUserList(socket, data.roomName, _.uniq(usernamesInRoomAfterJoining));
 			}
+
+			console.log('%s subscribed to %s.', session.usernane, data.roomName);
 		},
 		'unsubscribe': function(socket, session, data) {
 			if (data.roomName === undefined) {
 				console.log(util.format('%s tried to unsubscribe but did not specify a roomName so the request is being discarded', session.username));
-				console.log(data);
 				return;
 			}
 
-			console.log(util.format('%s unsubscribed from %s.', session.username, data.roomName));
-
 			socket.leave(data.roomName);
-
 			$this.sendRoomMessage(socket, data.roomName, 'admin', util.format('%s has left %s.', session.username, data.roomName));
+
+			console.log(util.format('%s unsubscribed from %s.', session.username, data.roomName));
 		},
 		'disconnect': function(socket, session) {
-			// Note that this event is fired before the socket is removed from the room list.
-			console.log(util.format('%s disconnected.'));
+			// This event is fired BEFORE the socket is removed from the room list.
 
 			// TODO: Is there a way to get rooms without accessing a private member (socket.manager)?
 			var room = null,
 				socketRoomName = null,
 				timesInRoom = 0,
-				rooms = socket.manager.roomClients[socket.id];
+				rooms = socket.manager.roomClients[socket.id], // Rooms associated with this socket.
+				usernamesInRoom = [],
+				usernamesInRoomAfterLeaving = [];
 
-			usernamesInRoom = null;
-
+			// For all rooms associated with the socket check if it is the last
+			// socket for that room for this user, and if so issue a message to the room.
 			for (socketRoomName in rooms) {
 				// Strip the socket.io leading '/'.
 				room = socketRoomName.substr(1);
 
-				usernamesInRoom = _.pluck($this.io.sockets.clients(room), 'username');
-				usernamesInRoomAfterLeaving = _.without(usernamesInRoom, socket.username);
+				// Determine whether this is the last socket connection this user has to this room.
+				usernamesInRoom                = _.pluck($this.io.sockets.clients(room), 'username');
+				usernamesInRoomAfterLeaving    = _.without(usernamesInRoom, socket.username);
+				timesInRoom                    = usernamesInRoom.length - usernamesInRoomAfterLeaving.length;
 
-				timesInRoom = usernamesInRoom.length - usernamesInRoomAfterLeaving.length;
-
-				// Only display the disconnect message if this is the last socket the
-				// user has open to the room.
+				// Only display the disconnect message if this is the last socket the user has open to the room.
 				if (timesInRoom === 1) {
 					$this.sendRoomMessage(socket, room, 'admin', util.format('%s has disconnected from %s.', session.username, room));
 					$this.broadcastUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
 				}
 			}
+
+			console.log('%s disconnected.', session.username);
 		},
 		'message': function(socket, session, data) {
-			console.log('message');
-			console.log(data);
-
 			// TODO: This kind of checking and logging is probably OTT. We could have some kind of separate validation module.
 			if (data.roomName === undefined) {
-				console.log(session.username + ' sent a message but did not specify a room name so it is being discarded.');
-				console.log(data);
+				console.log('%s sent a message but did not specify roomName so it is being discarded.', session.username);
 				return;
 			}
 
 			if (data.message === undefined) {
-				console.log(session.username + ' sent a message but did not specify a message so it is being discarded.');
-				console.log(data);
+				console.log('%s sent a message but did not specify message so it is being discarded.', session.username);
 				return;
 			}
 
-			console.log(session.username + ' sent a message:');
-			console.log(data);
-
+			console.log('%s sent the following message to %s: %s', session.username, data.roomName, data.message);
 			$this.sendRoomMessage(socket, data.roomName, session.username, data.message);
 		},
 		'userList': function(socket, session, data) {
 			if (data.roomName === undefined) {
-				console.log(session.username + ' requested userList but did not specify a room name so it is being discarded.');
-				console.log(data);
+				console.log('%s requested userList but did not specify roomName so it is being discarded.', session.username);
 				return;
 			}
-			console.log(session.username + ' requested userList.');
 
+			console.log('%s requested userList.', session.username);
 			$this.sendUserList(socket, data.roomName);
 		}
 	};
@@ -134,21 +123,29 @@ Chat.prototype.setupListeners = function() {
 	var $this = this;
 
 	this.sessionSockets.on('connection', function(err, socket, session) {
-	console.log('socket connection');
+		console.log('Chat socket connection.');
 		if (err) {
-			throw err;
+			throw(err);
 		}
 
-		// Bind events.
+		// Bind event handlers to the socket.
 		for (event in $this.socketEvents) {
-			console.log('Bound ' + event);
+			console.log('Bound Chat event to socket: %s.', event);
 			socket.on(event, $this.socketEvents[event].bind(this, socket, session));
 		}
 
+		// Store anything extra on the socket object.
 		socket.username = session.username;
 	});
 };
 
+
+// ----------------------
+// Emitters.
+// ----------------------
+
+
+// Send the user list of a given room to the socket.
 Chat.prototype.sendUserList = function(socket, roomName) {
 	var users = _.pluck(this.io.sockets.clients(roomName), 'username');
 	users = _.uniq(users);
@@ -159,6 +156,7 @@ Chat.prototype.sendUserList = function(socket, roomName) {
 	});
 };
 
+// Send the user list of a given room to the socket.
 Chat.prototype.broadcastUserList = function(socket, roomName, userList) {
 	socket.broadcast.to(roomName).emit('userList', {
 		roomName: roomName,
@@ -166,7 +164,7 @@ Chat.prototype.broadcastUserList = function(socket, roomName, userList) {
 	});
 };
 
-// Send a message from a user to a room.
+// Send a message from a user to a room; exluding a single socket.
 Chat.prototype.sendRoomMessage = function(socket, roomName, usernameFrom, message) {
 		socket.broadcast.to(roomName).emit('message', {
 			time: Date.now(),
@@ -176,12 +174,10 @@ Chat.prototype.sendRoomMessage = function(socket, roomName, usernameFrom, messag
 		});
 };
 
-// Send a message from a user to another user.
+// Send a direct message from a user to a socket.
 //
 // roomName is optional - if not specified then the message will appear in all
 // room windows.
-//
-// TODO: Most of the calls to this proc should actually be a notification.
 Chat.prototype.sendMessage = function(socket, usernameFrom, message, roomName) {
 	socket.emit('message', {
 		time: Date.now(),
@@ -191,7 +187,16 @@ Chat.prototype.sendMessage = function(socket, usernameFrom, message, roomName) {
 	});
 };
 
-// Send a notification to a user.
+// Send a notification to a room; exluding a single socket.
+Chat.prototype.sendRoomNotification = function(socket, roomName, message) {
+		socket.broadcast.to(roomName).emit('notification', {
+			time: Date.now(),
+			roomName: roomName,
+			message: message
+		});
+};
+
+// Send a notification to a socket in a room in a given room.
 //
 // roomName is optional - if not specified then the message will appear in all
 // room windows.
