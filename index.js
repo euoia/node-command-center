@@ -53,7 +53,7 @@ Chat = function(server, sessionStore, cookieParser) {
 			}
 
 			socket.leave(data.roomName);
-			$this.sendRoomMessage(socket, data.roomName, 'admin', util.format('%s has left %s.', session.username, data.roomName));
+			$this.sendRoomNotification(socket, data.roomName, util.format('%s has left %s.', session.username, data.roomName));
 
 			console.log(util.format('%s unsubscribed from %s.', session.username, data.roomName));
 		},
@@ -81,7 +81,7 @@ Chat = function(server, sessionStore, cookieParser) {
 
 				// Only display the disconnect message if this is the last socket the user has open to the room.
 				if (timesInRoom === 1) {
-					$this.sendRoomMessage(socket, room, 'admin', util.format('%s has disconnected from %s.', session.username, room));
+					$this.sendRoomNotification(socket, room, util.format('%s has disconnected from %s.', session.username, room));
 					$this.broadcastUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
 				}
 			}
