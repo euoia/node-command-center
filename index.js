@@ -1,7 +1,8 @@
 var sio = require('socket.io'),
 	SessionSockets = require('session.socket.io'),
 	_ = require('underscore'),
-	util = require('util');
+	util = require('util'),
+	sanitize = require('validator').sanitize;
 
 // Adds the following keys to the session:
 // rooms - An array of room names that the session is currently present in.
@@ -166,6 +167,7 @@ Chat.prototype.broadcastUserList = function(socket, roomName, userList) {
 
 // Send a message from a user to a room; exluding a single socket.
 Chat.prototype.sendRoomMessage = function(socket, roomName, usernameFrom, message) {
+	message = sanitize(message).entityEncode();
 		socket.broadcast.to(roomName).emit('message', {
 			time: Date.now(),
 			username: usernameFrom,
@@ -179,6 +181,7 @@ Chat.prototype.sendRoomMessage = function(socket, roomName, usernameFrom, messag
 // roomName is optional - if not specified then the message will appear in all
 // room windows.
 Chat.prototype.sendMessage = function(socket, usernameFrom, message, roomName) {
+	message = sanitize(message).entityEncode();
 	socket.emit('message', {
 		time: Date.now(),
 		username: usernameFrom,
@@ -189,11 +192,12 @@ Chat.prototype.sendMessage = function(socket, usernameFrom, message, roomName) {
 
 // Send a notification to a room; exluding a single socket.
 Chat.prototype.sendRoomNotification = function(socket, roomName, message) {
-		socket.broadcast.to(roomName).emit('notification', {
-			time: Date.now(),
-			roomName: roomName,
-			message: message
-		});
+	message = sanitize(message).entityEncode();
+	socket.broadcast.to(roomName).emit('notification', {
+		time: Date.now(),
+		roomName: roomName,
+		message: message
+	});
 };
 
 // Send a notification to a socket in a room in a given room.
@@ -201,6 +205,7 @@ Chat.prototype.sendRoomNotification = function(socket, roomName, message) {
 // roomName is optional - if not specified then the message will appear in all
 // room windows.
 Chat.prototype.sendNotification = function(socket, message, roomName) {
+	message = sanitize(message).entityEncode();
 	socket.emit('notification', {
 		time: Date.now(),
 		message: message,
