@@ -188,6 +188,11 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 			throw new Error('Must add a function.');
 		}
 
+		// Could possibly add "replaceCommand" function if this is required.
+		if (this.commands[command] !== undefined) {
+			throw new Error ('Error! Command already exists.');
+		}
+
 		this.commands[command] = fn;
 	};
 
