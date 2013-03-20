@@ -5,6 +5,9 @@
 // to separate out the chat functionality into its own module.
 //
 // TODO: Handle multiple rooms AT THE SAME TIME.
+//
+// General notes:
+//  * This acts as a facade for the socket object through Chat.prototype.emit.
 define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 	function Chat(options) {
 		$this = this;
@@ -141,7 +144,8 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
 	Chat.prototype.handleMessageInput = function() {
 		var message = this.messageEntry.val(),
-			command = null;
+			command = null,
+			args = [];
 
 		this.messageEntry.val('');
 
@@ -149,7 +153,11 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 			// A command!
 			command = message.substr(1);
 			if (this.commands[command] !== undefined && typeof(this.commands[command]) === 'function') {
-				this.commands[command]();
+				// Split arguments into an array.
+				args = message.substr(command.length + 1).split(/\s+/);
+
+				// Call the bound function with any additional arguments.
+				this.commands[command].apply(undefined, args);
 			} else {
 				this.addNotification(Date.now(), 'Not a valid command.');
 				this.addNotification(Date.now(), 'Valid commands are: ' + _.keys(this.commands).join(', '));
@@ -173,8 +181,8 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 		this.disconnect();
 	};
 
-	Chat.prototype.emit = function(data) {
-		this.socket.emit(data);
+	Chat.prototype.emit = function(event, data) {
+		this.socket.emit(event, data);
 	};
 
 
