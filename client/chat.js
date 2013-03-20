@@ -1,23 +1,29 @@
 // TODO: Not sure whether it's better to store references to the jQuery objects
 // or just store the selector string.
-
-define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
+//
+// TODO: This is really a kind of "command console". Perhaps it would be better
+// to separate out the chat functionality into its own module.
+//
+// TODO: Handle multiple rooms AT THE SAME TIME.
+define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 	function Chat(options) {
 		$this = this;
 
-		// TODO: Handle multiple rooms AT THE SAME TIME.
-		this.username = options.username;
-		this.roomName = options.roomName;
-		this.commands = options.commands;
+		// jQuery options.
 		this.userListDiv = $(options.userListDiv);
 		this.messagesUl = $(options.messagesUl);
 		this.messageScroll = $(options.messageScroll);
 		this.messageEntryForm = $(options.messageEntryForm);
 		this.messageEntry = $(options.messageEntry);
+
+		// Initialise this vars.
+		this.username = null;
 		this.socket = null;
 		this.roomUserList = null; // UL of users in room.
+		this.commands = {};
 
-		console.log('new chat, roomName: ' + this.roomName);
+		// Commands.
+		this.addCommand('listCommands', this.listCommands.bind(this));
 
 		// Bind to the message entry form.
 		this.messageEntryForm.submit(function() {
@@ -25,19 +31,20 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 			return false;
 		});
 
-		// Init user list HMTL.
-		$this.initUserList();
+		console.log('new chat, roomName: %s', roomName);
 	}
 
-	Chat.prototype.connect = function(roomName) {
+	Chat.prototype.connect = function(username, roomName) {
+		this.username = username;
 		this.roomName = roomName;
-		console.log('connecting, this.roomName: ' + this.roomName);
-
 
 		if (this.socket === null) {
 			console.log('connecting for the first time');
 			this.socket = io.connect('http://localhost');
 			this.listen();
+
+			// Init user list HMTL.
+			$this.initUserList();
 		} else {
 			console.log('reconnecting');
 			this.socket.socket.reconnect();
@@ -79,7 +86,7 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 		// Receive a notification.
 		// Note that data.roomName is optional.
 		this.socket.on('notification', function(data) {
-			$this.addNotification(data.time, data.username, data.message);
+			$this.addNotification(data.time, data.message);
 		});
 	};
 
@@ -98,6 +105,7 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 		}
 	};
 
+	// Send a message to the current room.
 	Chat.prototype.sendMessage = function(message) {
 		console.log('sendMessage');
 		this.socket.emit('message', {
@@ -112,53 +120,24 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 	Chat.prototype.addMessage = function(time, username, message) {
 		this.messagesUl.append(
 			"<li class='message'>" +
-			"<span class='timestamp'>[" + this.formatDate(time) + "] </span>" +
+			"<span class='timestamp'>[" + Util.formatDate(time) + "] </span>" +
 			"<span class='username'>" + username + ": </span>" +
 			"<span class='message'>" + message + "</span>" +
 			"</li>");
 
-		this.scrollDown();
+		Util.scrollDown(this.messageEntry);
 	};
 
-	Chat.prototype.addNotification = function(time, username, message) {
+	Chat.prototype.addNotification = function(time, message) {
 		this.messagesUl.append(
 			"<li class='notification'>" +
-			"<span class='timestamp'>[" + this.formatDate(time) + "] </span>" +
+			"<span class='timestamp'>[" + Util.formatDate(time) + "] </span>" +
 			"<span class='notification'>" + message + "</span>" +
 			"</li>");
 
-		this.scrollDown();
+		Util.scrollDown(this.messageEntry);
 	};
 
-	Chat.prototype.formatDate = function(dateStr) {
-		var d = new Date(dateStr);
-
-		return this.formatNumberLength(d.getHours(), 2) +
-			":" + this.formatNumberLength(d.getMinutes(), 2);
-	};
-
-	Chat.prototype.formatNumberLength = function(num, length) {
-		var r = "" + num;
-		while (r.length < length) {
-			r = "0" + r;
-		}
-
-		return r;
-	};
-
-	Chat.prototype.scrollDown = function() {
-		var $this = this;
-
-		//used to keep the most recent messages visible
-		this.messageScroll.animate({
-			scrollTop: 9999
-		}, 400);
-
-		//clear the animation otherwise the user cannot scroll back up.
-		setTimeout(function clearAnimate() {
-			$this.messageScroll.animate({}, 1);
-		});
-	};
 
 	Chat.prototype.handleMessageInput = function() {
 		var message = this.messageEntry.val(),
@@ -172,7 +151,8 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 			if (this.commands[command] !== undefined && typeof(this.commands[command]) === 'function') {
 				this.commands[command]();
 			} else {
-				this.addMessage(Date.now(), 'admin', 'Not a valid command');
+				this.addNotification(Date.now(), 'Not a valid command.');
+				this.addNotification(Date.now(), 'Valid commands are: ' + _.keys(this.commands).join(', '));
 			}
 		} else {
 			this.sendMessage(message);
@@ -193,9 +173,22 @@ define(['jquery', 'underscore', 'socket.io'], function($, _, io) {
 		this.disconnect();
 	};
 
-	// TODO: We should be able to add this command from a separate game module.
-	Chat.prototype.listGames = function () {
-		this.socket.emit('listGames');
+	Chat.prototype.emit = function(data) {
+		this.socket.emit(data);
+	};
+
+
+	Chat.prototype.listCommands = function() {
+		var message = 'Available commands: ' + _.keys(this.commands).join(', ');
+		this.addNotification(Date.now(), message);
+	};
+
+	Chat.prototype.addCommand = function(command, fn) {
+		if (typeof(fn) !== 'function') {
+			throw new Error('Must add a function.');
+		}
+
+		this.commands[command] = fn;
 	};
 
 	return Chat;
