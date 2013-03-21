@@ -70,13 +70,12 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
 		// Upon connecting with the socket.
 		this.socket.on('connect', function() {
-			$this.socket.emit('subscribe', {
-				roomName: $this.roomName
-			});
+			$this.emit('subscribe');
 		});
 
 		// Receive a user list for a room.
 		this.socket.on('userList', function(data) {
+			console.log('Received userList: %s', data.users.join(', '));
 			$this.updateUserList(data.users);
 		});
 
@@ -111,9 +110,8 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 	// Send a message to the current room.
 	Chat.prototype.sendMessage = function(message) {
 		console.log('sendMessage');
-		this.socket.emit('message', {
+		this.emit('message', {
 			message: message,
-			roomName: this.roomName
 		});
 
 		// We add our message directly since the server will not echo it back to us.
@@ -150,11 +148,12 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 		this.messageEntry.val('');
 
 		if (message.charAt(0) === '/') {
-			// A command!
-			command = message.substr(1);
+			// Looks like a command. What is the first word?
+			command = message.substr(1).split(/\s+/)[0];
 			if (this.commands[command] !== undefined && typeof(this.commands[command]) === 'function') {
 				// Split arguments into an array.
 				args = message.substr(command.length + 1).split(/\s+/);
+				args = _.without(args, '');
 
 				// Call the bound function with any additional arguments.
 				this.commands[command].apply(undefined, args);
@@ -168,9 +167,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 	};
 
 	Chat.prototype.refreshUserList = function() {
-		this.socket.emit('userList', {
-			roomName: this.roomName
-		});
+		this.emit('userList');
 	};
 
 	Chat.prototype.destroy = function() {
@@ -182,6 +179,9 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 	};
 
 	Chat.prototype.emit = function(event, data) {
+		data = data || {};
+		data = _.extend(data, {roomName: this.roomName});
+
 		this.socket.emit(event, data);
 	};
 
