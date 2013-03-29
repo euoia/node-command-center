@@ -7,6 +7,10 @@ var sio = require('socket.io'),
 // Adds the following keys to the session:
 // rooms - An array of room names that the session is currently present in.
 //         This is used for rejoining when the client sends a checkSession request.
+//
+// TODO: Perhaps introduce a ChatSession object so that we don't have to pass
+// the session and socket objects around to the sendNotification messages.
+//
 
 Chat = function(server, sessionStore, cookieParser) {
 	var $this = this;
@@ -115,6 +119,10 @@ Chat = function(server, sessionStore, cookieParser) {
 		}
 	};
 
+	// Array of {ns: ns, event: event, fn: fn}
+	this.namespacedSocketEvents = [];
+
+
 	this.io = sio.listen(server);
 	this.sessionSockets = new SessionSockets(this.io, sessionStore, cookieParser);
 	this.setupListeners();
@@ -138,6 +146,13 @@ Chat.prototype.setupListeners = function() {
 		// Store anything extra on the socket object.
 		socket.username = session.username;
 	});
+};
+
+// Allow the client code to add namespaced socket events.
+Chat.prototype.addNamespacedListener = function (ns, event, fn) {
+	ns = '/' + ns;
+	console.log('Adding namespaced listener ns=%s event=%s.', ns, event);
+	this.sessionSockets.of(ns).on(event, fn);
 };
 
 
@@ -214,8 +229,8 @@ Chat.prototype.sendNotification = function(socket, message, roomName) {
 };
 
 // Allow the client code to add additional socket events.
-Chat.prototype.addSocketEvent = function (event, fn) {
-	console.log ('Adding socket event: ' + event);
+Chat.prototype.addListener = function (event, fn) {
+	console.log ('Adding listener: ' + event);
 	this.socketEvents[event] = fn;
 };
 

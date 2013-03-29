@@ -34,6 +34,29 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 			return false;
 		});
 
+		// Listeners
+		this.socketEvents = {
+			'connect': function() {
+				// Upon connecting with the socket.
+				$this.emit('subscribe');
+			},
+			'userList': function(data) {
+					// Receive a user list for a room.
+					console.log('Received userList: %s', data.users.join(', '));
+					$this.updateUserList(data.users);
+				},
+			'message': function(data) {
+				// Receive a message.
+				// Note that data.roomName is optional.
+				$this.addMessage(data.time, data.username, data.message);
+			},
+			'notification': function(data) {
+				// Receive a notification.
+				// Note that data.roomName is optional.
+				$this.addNotification(data.time, data.message);
+			}
+		};
+
 		console.log('new chat, roomName: %s', roomName);
 	}
 
@@ -66,30 +89,12 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 			alert('Cannot listen without a room name');
 		}
 
+		// Bind event handlers to the socket.
+		for (event in this.socketEvents) {
+			this.socket.on(event, this.socketEvents[event].bind(this));
+		}
+
 		var $this = this;
-
-		// Upon connecting with the socket.
-		this.socket.on('connect', function() {
-			$this.emit('subscribe');
-		});
-
-		// Receive a user list for a room.
-		this.socket.on('userList', function(data) {
-			console.log('Received userList: %s', data.users.join(', '));
-			$this.updateUserList(data.users);
-		});
-
-		// Receive a message.
-		// Note that data.roomName is optional.
-		this.socket.on('message', function(data) {
-			$this.addMessage(data.time, data.username, data.message);
-		});
-
-		// Receive a notification.
-		// Note that data.roomName is optional.
-		this.socket.on('notification', function(data) {
-			$this.addNotification(data.time, data.message);
-		});
 	};
 
 	Chat.prototype.initUserList = function(users) {
@@ -202,6 +207,11 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 		}
 
 		this.commands[command] = fn;
+	};
+
+	// Allow the client code to add additional socket events.
+	Chat.prototype.addListener = function (event, fn) {
+		this.socketEvents[event] = fn;
 	};
 
 	return Chat;
