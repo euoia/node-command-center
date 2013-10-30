@@ -42,14 +42,11 @@ Module dependencies
 Implied dependencies
 ----
 **Node web server object (returned by http.createServer)** -
-   Passed to constructor as server.
-
+   Passed to constructor as server.  
 **Express (actually Connect middleware) session store** -
-   Passed to constructor as sessionStore.
-
+   Passed to constructor as sessionStore.  
 **Express (actually Connect middleware) cookie parser** -
-   Passed to constructor as cookieParser.
-
+   Passed to constructor as cookieParser.  
 **Express (actually Connect middleware) session object** -
    Passed to initSession function, passed to socket.io events.
    Extended with rooms key, which is an array of room names that the session
