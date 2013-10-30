@@ -1,0 +1,9 @@
+{
+  "name": "client",
+  "version": "0.0.0",
+  "dependencies": {
+    "jquery": "~1.9.1",
+    "underscore": "~1.4.4",
+    "socket.io-client": "~0.9.11"
+  }
+}
