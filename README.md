@@ -52,6 +52,20 @@ Implied dependencies
    Extended with rooms key, which is an array of room names that the session
    has subscribed to.
 
+Using the client library
+----
+The client library in client/ is built using [Require.js](http://requirejs.org/).
+
+If your project already uses RequireJS you can use client/command-center-client.js.
+
+If you would prefer a compiled, minified version which includes the client-side
+dependencies (jquery, underscore, socket.io-client - see component.json for
+version numbers) then use client/command-center-client.min.js.
+
+To rebuild the minified version you should have requirejs installed globally
+using `npm install -g requirejs` and then run `r.js -o
+client/command-center-client-min.js`.
+
 TODOs
 ----
 * Build an eventData validator, since validation of this gets repeated often.
