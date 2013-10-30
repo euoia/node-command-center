@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Wed 30 Oct 2013 12:57:40 PM GMT
+//  Last Modified:      Wed 30 Oct 2013 03:48:35 PM GMT
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -95,7 +95,7 @@ function CommandCenter(server, sessionStore, cookieParser) {
   this.socketEvents  = {
     'subscribe': function(socket, session, eventData) {
       if (eventData.roomName === undefined) {
-        console.log('%s sent subscribe but did not specify a roomName.', session.username);
+        console.log('CommandCenter: subscribe event, warning: %s did not specify a roomName.', session.username);
         return;
       }
 
@@ -125,19 +125,25 @@ function CommandCenter(server, sessionStore, cookieParser) {
         $this.broadcastUserList(socket, eventData.roomName, _.uniq(usernamesInRoomAfterJoining));
       }
 
-      console.log('%s subscribed to %s.', session.usernane, eventData.roomName);
+      console.log('CommandCenter: subscribe event, success: %s subscribed to %s.', session.usernane, eventData.roomName);
     },
     'unsubscribe': function(socket, session, eventData) {
 
       if (eventData.roomName === undefined) {
-        console.log(util.format('%s tried to unsubscribe but did not specify a roomName so the request is being discarded', session.username));
+        console.log(util.format('CommandCenter: unsubscribe event, warning: %s did not specify a roomName.', session.username));
         return;
       }
 
       socket.leave(eventData.roomName);
-      $this.sendRoomNotification(socket, eventData.roomName, util.format('%s has left %s.', session.username, eventData.roomName));
+      $this.sendRoomNotification(
+        socket,
+        eventData.roomName,
+        util.format('%s has left %s.', session.username, eventData.roomName));
 
-      console.log(util.format('%s unsubscribed from %s.', session.username, eventData.roomName));
+      console.log(util.format(
+        'CommandCenter: unsubscribe event, success: %s unsubscribed from %s.',
+        session.username,
+        eventData.roomName));
     },
     'disconnect': function(socket, session) {
       // This event is fired BEFORE the socket is removed from the room list.
@@ -168,30 +174,30 @@ function CommandCenter(server, sessionStore, cookieParser) {
         }
       }
 
-      console.log('%s disconnected.', session.username);
+      console.log('CommandCenter: disconnect event, success: %s disconnected.', session.username);
     },
     'message': function(socket, session, eventData) {
       // TODO: This kind of checking and logging is probably OTT. We could have some kind of separate validation module.
       if (eventData.roomName === undefined) {
-        console.log('%s sent a message but did not specify roomName so it is being discarded.', session.username);
+        console.log('CommandCenter: message event, warning: %s sent a message but did not specify roomName.', session.username);
         return;
       }
 
       if (eventData.message === undefined) {
-        console.log('%s sent a message but did not specify message so it is being discarded.', session.username);
+        console.log('CommandCenter: message event, warning: %s sent a message but did not specify message.', session.username);
         return;
       }
 
-      console.log('%s sent the following message to %s: %s', session.username, eventData.roomName, eventData.message);
+      console.log('CommandCenter: message event, success: %s sent the following message to %s: %s', session.username, eventData.roomName, eventData.message);
       $this.sendRoomMessage(socket, eventData.roomName, session.username, eventData.message);
     },
     'userList': function(socket, session, eventData) {
       if (eventData.roomName === undefined) {
-        console.log('%s requested userList but did not specify roomName so it is being discarded.', session.username);
+        console.log('CommandCenter: userList event, warning: %s requested userList but did not specify roomName.', session.username);
         return;
       }
 
-      console.log('%s requested userList.', session.username);
+      console.log('CommandCenter: userList event, success: %s requested userList.', session.username);
       $this.sendUserList(socket, eventData.roomName);
     }
   };
@@ -204,14 +210,14 @@ function CommandCenter(server, sessionStore, cookieParser) {
 
   // Set up the event handlers.
   this.sessionSockets.on('connection', function(err, socket, session) {
-    console.log('CommandCenter socket connection.');
+    console.log('CommandCenter: connection event.');
     if (err) {
       throw(err);
     }
 
     // Bind event handlers to the socket.
     for (var event in $this.socketEvents) {
-      console.log('Bound CommandCenter event to socket: %s.', event);
+      console.log('CommandCenter: Bound event to socket: %s.', event);
       socket.on(event, $this.socketEvents[event].bind(this, socket, session));
     }
 
@@ -224,15 +230,17 @@ function CommandCenter(server, sessionStore, cookieParser) {
 // TODO: I don't follow how this works - surely these would need to be added
 // before CommandCenter is instantiated or else they will not be bound in the
 // 'bind event handlers to the socket' block.
+//
+// TODO: Merge addEventHandler and addNamespacedEventHandler.
 CommandCenter.prototype.addEventHandler = function (event, fn) {
-  console.log ('Adding event handler for event=%s.', event);
+  console.log ('CommandCenter: Adding event handler for event=%s.', event);
   this.socketEvents[event] = fn;
 };
 
 // Allow the client code to add namespaced socket events.
 CommandCenter.prototype.addNamespacedEventHandler = function (ns, event, fn) {
   ns = '/' + ns;
-  console.log('Adding namespaced event handler ns=%s event=%s.', ns, event);
+  console.log('CommandCenter: Adding namespaced event handler ns=%s event=%s.', ns, event);
   this.sessionSockets.of(ns).on(event, fn);
 };
 
@@ -318,7 +326,7 @@ CommandCenter.prototype.sendNotification = function(socket, message, roomName) {
 // Initialize the express session object.
 // TODO: Do not extend the session object.
 CommandCenter.initSession = function(session) {
-  console.log('initSession',session);
+  console.log('CommandCenter: initSession', session);
   session.rooms = [];
 };
 
