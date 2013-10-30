@@ -16,41 +16,28 @@ Features
 Socket.io events responded to
 ----
 ### Event name:  subscribe
-Description: The socket/session subscribes to a room. Users in the room are notified.
-
+Description: The socket/session subscribes to a room. Users in the room are notified.  
 eventData:   Requires roomName => (string).
 
 ### Event name:  unsubscribe
-Description: The socket/session unsubscribes from a room. Users in the room are notified.
-
+Description: The socket/session unsubscribes from a room. Users in the room are notified.  
 eventData:   Requires roomName => (string).
 
 ### Event name:  message
-Description: The socket/session sends a message to a room. Users in the room are notified.
-
+Description: The socket/session sends a message to a room. Users in the room are notified.  
 eventData:   Requires roomName => (string), message => (string).
 
 ### Event name:  userList
-Description: The socket/session requests the user list of a room.
-
+Description: The socket/session requests the user list of a room.  
 eventData:   Requires roomName => (string).
 
 Module dependencies
 ----
-*socket.io* -
-    Used to bind between socket.io and node web server object.
-
-*session.socket.io* -
-    Used for associating the session and socket objects. TODO: More info.
-
-*underscore* -
-    Used for various helper functions.
-
-*util* -
-    (node built-in) used for various helper functions.
-
-*sanitize* -
-    Used for HTML sanitizing messages before sending them.
+*socket.io*         - Used to bind between socket.io and node web server object.  
+*session.socket.io* - Used for associating the session and socket objects. TODO: More info.  
+*underscore*        - Used for various helper functions.  
+*util*              - (node built-in) used for various helper functions.  
+*sanitize*          - Used for HTML sanitizing messages before sending them.  
 
 Implied dependencies
 ----
