@@ -15,24 +15,24 @@ Features
 
 Socket.io events responded to
 ----
-
-Roses are red
-Violets are blue
-
-Event name:  subscribe
+### Event name:  subscribe
 Description: The socket/session subscribes to a room. Users in the room are notified.
+
 eventData:   Requires roomName => (string).
 
-Event name:  unsubscribe
+### Event name:  unsubscribe
 Description: The socket/session unsubscribes from a room. Users in the room are notified.
+
 eventData:   Requires roomName => (string).
 
-Event name:  message
+### Event name:  message
 Description: The socket/session sends a message to a room. Users in the room are notified.
+
 eventData:   Requires roomName => (string), message => (string).
 
-Event name:  userList
+### Event name:  userList
 Description: The socket/session requests the user list of a room.
+
 eventData:   Requires roomName => (string).
 
 Module dependencies
