@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Wed 30 Oct 2013 03:48:35 PM GMT
+//  Last Modified:      Wed 30 Oct 2013 04:11:07 PM GMT
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -70,7 +70,7 @@
 // TODOs
 // ----
 // TODO: Build an eventData validator, since validation of this gets repeated often.
-// TODO: Understand this code a bit better!
+// TODO: Re-add an example of how to use this.
 // --------------------------------------------------
 
 var sio = require('socket.io'),
@@ -208,7 +208,9 @@ function CommandCenter(server, sessionStore, cookieParser) {
   this.io = sio.listen(server);
   this.sessionSockets = new SessionSockets(this.io, sessionStore, cookieParser);
 
-  // Set up the event handlers.
+  // Event handlers for the socket are set up on the connection event.
+  // So long as the event handlers are added before the socket connects, they
+  // will be available to the socket.
   this.sessionSockets.on('connection', function(err, socket, session) {
     console.log('CommandCenter: connection event.');
     if (err) {
