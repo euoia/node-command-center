@@ -69,3 +69,4 @@ client/command-center-client-min.js`.
 TODOs
 ----
 * Build an eventData validator, since validation of this gets repeated often.
+* Double check that the instructions for using the client library work.
