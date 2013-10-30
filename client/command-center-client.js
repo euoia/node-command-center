@@ -34,7 +34,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
       return false;
     });
 
-    // Listeners
     this.socketEvents = {
       'connect': function() {
         // Upon connecting with the socket.
