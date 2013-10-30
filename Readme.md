@@ -1,7 +1,7 @@
 node-command-center
 ----
 The purpose of this module is to provide socket.io room helper functions and
-to centralize socket.io event handler management inside your application.
+to centralize socket.io event handler management inside your express application.
 
 Right now the support for chat rooms is built in, but this may be factored
 out into a separate module.
