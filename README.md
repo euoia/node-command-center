@@ -15,6 +15,9 @@ Features
 
 Socket.io events responded to
 ----
+Roses are red
+Violets are blue
+
 Event name:  subscribe
 Description: The socket/session subscribes to a room. Users in the room are notified.
 eventData:   Requires roomName => (string).
@@ -33,11 +36,8 @@ eventData:   Requires roomName => (string).
 
 Module dependencies
 ----
-*socket.io*         - Only used for the following line (TODO: Can we remove this?):
-
-```
-   this.io = sio.listen(server);
-```
+*socket.io* -
+    Used to bind between socket.io and node web server object.
 
 *session.socket.io* -
     Used for associating the session and socket objects. TODO: More info.
