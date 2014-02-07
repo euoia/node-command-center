@@ -14,7 +14,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
     // jQuery options.
     this.roomUserListDiv = $(options.roomUserListDiv);
-    this.roomMatchListDiv = $(options.roomMatchListDiv);
     this.messagesUl = $(options.messagesUl);
     this.messageScroll = $(options.messageScroll);
     this.messageEntryForm = $(options.messageEntryForm);
@@ -24,7 +23,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     this.username = null;
     this.socket = null;
     this.roomUserList = null; // <ul> of users in room.
-    this.roomMatchList = null; // <ul> of available matches.
     this.commands = {};
 
     // Commands.
@@ -45,11 +43,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
         // Receive a user list for a room.
         console.log('Received userList.', data);
         $this.updateRoomUserList(data.users);
-      },
-      'roomMatchList': function(data) {
-        // TODO: Why not just send the matches directly?
-        console.log('Received roomMatchList.', data);
-        $this.updateRoomMatchList(data);
       },
       'message': function(data) {
         // Receive a message.
@@ -77,7 +70,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
       // Init user list HMTL.
       $this.initRoomUserList();
-      $this.initRoomMatchList();
     } else {
       console.log('reconnecting');
       this.socket.socket.reconnect();
@@ -116,35 +108,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
     for (var i in users) {
       $('<li class="username usernameList">' + users[i] + '</li>').appendTo(this.roomUserList);
-    }
-  };
-
-  CommandCenter.prototype.initRoomMatchList = function(users) {
-    $('<div id="roomMatchListTitle">Current games</div>')
-      .appendTo(this.roomMatchListDiv);
-
-    this.roomMatchList = $('<ul id="roomMatchList" />').appendTo(this.roomMatchListDiv);
-  };
-
-  CommandCenter.prototype.updateRoomMatchList = function(matches) {
-    this.roomMatchList.html('');
-
-    var joinMatch = function (matchID) {
-      console.log("Trying to join %s", matchID);
-        this.emit('joinMatch', {
-          matchID: matchID
-        });
-    }.bind(this);
-
-    for (var i = 0; i < matches.length; i += 1) {
-      var match = matches[i];
-      var matchElem = $('<li class="match"><div class="matchContainer">' +
-        '<img class="gameIcon" src="img/games/' +
-        match.gameID + '/icon.png" /><div class="matchText">' +
-        match.gameID +' by ' + match.owner +
-        '</div></div></li>').appendTo(this.roomMatchList);
-
-      matchElem.click(joinMatch.bind(this, match.id));
     }
   };
 
