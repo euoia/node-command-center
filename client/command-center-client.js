@@ -14,6 +14,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
     // jQuery options.
     this.userListDiv = $(options.userListDiv);
+    this.roomMatchListDiv = $(options.roomMatchListDiv);
     this.messagesUl = $(options.messagesUl);
     this.messageScroll = $(options.messageScroll);
     this.messageEntryForm = $(options.messageEntryForm);
@@ -22,7 +23,8 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     // Initialise this vars.
     this.username = null;
     this.socket = null;
-    this.roomUserList = null; // UL of users in room.
+    this.roomUserList = null; // <ul> of users in room.
+    this.roomMatchList = null; // <ul> of available matches.
     this.commands = {};
 
     // Commands.
@@ -40,10 +42,15 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
         $this.emit('subscribe');
       },
       'userList': function(data) {
-          // Receive a user list for a room.
-          console.log('Received userList: %s', data.users.join(', '));
-          $this.updateUserList(data.users);
-        },
+        // Receive a user list for a room.
+        console.log('Received userList.', data);
+        $this.updateRoomUserList(data.users);
+      },
+      'roomMatchList': function(data) {
+        // TODO: Why not just send the matches directly?
+        console.log('Received roomMatchList.', data);
+        $this.updateRoomMatchList(data);
+      },
       'message': function(data) {
         // Receive a message.
         // Note that data.roomName is optional.
@@ -65,11 +72,12 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
     if (this.socket === null) {
       console.log('connecting for the first time');
-      this.socket = io.connect('http://localhost');
+      this.socket = io.connect('/');
       this.listen();
 
       // Init user list HMTL.
-      $this.initUserList();
+      $this.initRoomUserList();
+      $this.initRoomMatchList();
     } else {
       console.log('reconnecting');
       this.socket.socket.reconnect();
@@ -96,18 +104,34 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     var $this = this;
   };
 
-  CommandCenter.prototype.initUserList = function(users) {
+  CommandCenter.prototype.initRoomUserList = function(users) {
     $('<div class="roomName">' + this.roomName + ' users</div>')
       .appendTo(this.userListDiv);
 
     this.roomUserList = $('<ul id="roomUserList" />').appendTo(this.userListDiv);
   };
 
-  CommandCenter.prototype.updateUserList = function(users) {
+  CommandCenter.prototype.updateRoomUserList = function(users) {
     this.roomUserList.html('');
 
     for (var i in users) {
-      $('<li class="username">' + users[i] + '</li>').appendTo('#roomUserList');
+      $('<li class="username">' + users[i] + '</li>').appendTo(this.roomUserList);
+    }
+  };
+
+  CommandCenter.prototype.initRoomMatchList = function(users) {
+    $('<div class="roomMatchListTitle">Games</div>')
+      .appendTo(this.roomMatchListDiv);
+
+    this.roomMatchList = $('<ul id="roomMatchList" />').appendTo(this.roomMatchListDiv);
+  };
+
+  CommandCenter.prototype.updateRoomMatchList = function(matches) {
+    this.roomMatchList.html('');
+
+    for (var matchID in matches) {
+      $('<li class="username">' + matches[matchID].gameID + ' created by ' +
+        matches[matchID].owner + '</li>').appendTo(this.roomMatchList);
     }
   };
 
@@ -170,7 +194,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     }
   };
 
-  CommandCenter.prototype.refreshUserList = function() {
+  CommandCenter.prototype.refreshRoomUserList = function() {
     this.emit('userList');
   };
 

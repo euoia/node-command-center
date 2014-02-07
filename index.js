@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Wed 30 Oct 2013 04:11:07 PM GMT
+//  Last Modified:      Fri 07 Feb 2014 12:25:00 PM EST
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -38,7 +38,10 @@
 // ----
 // socket.io         - Only used for the following line (TODO: Can we remove this?):
 //    this.io = sio.listen(server);
-// session.socket.io - Used for associating the session and socket objects. TODO: More info.
+// session.socket.io - https://github.com/wcamarao/session.socket.io
+//                     This helpful module passes the Connect session object to
+//                     socket.io event handler functions. This way, socket handler
+//                     functions can check the user's session details.
 // underscore        - Used for various helper functions.
 // util              - (node built-in) used for various helper functions.
 // sanitize          - Used for HTML sanitizing messages before sending them.
@@ -53,7 +56,7 @@
 // Express (actually Connect middleware) session store -
 //    Passed to constructor as sessionStore. Only used for the following line
 //    (TODO: Can we remove this?):
-//      this.sessionSockets = new
+//      this.sessionSocketIO = new
 //
 //
 // Express (actually Connect middleware) cookie parser -
@@ -71,11 +74,12 @@
 // ----
 // TODO: Build an eventData validator, since validation of this gets repeated often.
 // TODO: Re-add an example of how to use this.
+// TODO: It would be ideal if this module did not have a dependency on
+//       session.socket.io - I would prefer that dependency to be present in the
+//       parent module (node-games-lobby). Whether that's easy or not, I don't know.
 // --------------------------------------------------
 
-var sio = require('socket.io'),
-  SessionSockets = require('session.socket.io'),
-  _ = require('underscore'),
+var _ = require('underscore'),
   util = require('util'),
   sanitize = require('validator').sanitize;
 
@@ -88,8 +92,19 @@ var sio = require('socket.io'),
 // messages.
 //
 
-function CommandCenter(server, sessionStore, cookieParser) {
+// eventListener allows consuming code to listen to events occurring in the
+// Command Center. The following events are emitted:
+// 'subscribe': A socket has subscribed to a room.
+function CommandCenter(sessionSocketIO, eventListener) {
   var $this = this;
+
+  this.sessionSocketIO = sessionSocketIO;
+
+  var emit = function (eventName, eventData) {
+    if (eventListener) {
+      eventListener.emit(eventName, eventData);
+    }
+  };
 
   // Array of socket events that can be handled.
   this.socketEvents  = {
@@ -114,7 +129,7 @@ function CommandCenter(server, sessionStore, cookieParser) {
 
       // Send the user list to the socket.
       // A user may have multiple socket connections so we need the unique list of usernames.
-      $this.sendUserList(socket, eventData.roomName);
+      $this.sendRoomUserList(socket, eventData.roomName);
 
       // If already present, the socket needs to join, but do not notify the room.
       if (_.contains(usernamesInRoomBeforeJoining, socket.username)) {
@@ -122,8 +137,10 @@ function CommandCenter(server, sessionStore, cookieParser) {
       } else {
         $this.sendNotification(socket, util.format('You have joined %s.', eventData.roomName), eventData.roomName);
         $this.sendRoomNotification(socket, eventData.roomName, util.format('%s has joined %s.', session.username, eventData.roomName));
-        $this.broadcastUserList(socket, eventData.roomName, _.uniq(usernamesInRoomAfterJoining));
+        $this.broadcastRoomUserList(socket, eventData.roomName, _.uniq(usernamesInRoomAfterJoining));
       }
+
+      emit('subscribe');
 
       console.log('CommandCenter: subscribe event, success: %s subscribed to %s.', session.usernane, eventData.roomName);
     },
@@ -170,7 +187,7 @@ function CommandCenter(server, sessionStore, cookieParser) {
         // Only display the disconnect message if this is the last socket the user has open to the room.
         if (timesInRoom === 1) {
           $this.sendRoomNotification(socket, room, util.format('%s has disconnected from %s.', session.username, room));
-          $this.broadcastUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
+          $this.broadcastRoomUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
         }
       }
 
@@ -198,22 +215,20 @@ function CommandCenter(server, sessionStore, cookieParser) {
       }
 
       console.log('CommandCenter: userList event, success: %s requested userList.', session.username);
-      $this.sendUserList(socket, eventData.roomName);
+      $this.sendRoomUserList(socket, eventData.roomName);
     }
   };
 
   // Array of {ns: ns, event: event, fn: fn}
   this.namespacedSocketEvents = [];
 
-  this.io = sio.listen(server);
-  this.sessionSockets = new SessionSockets(this.io, sessionStore, cookieParser);
-
   // Event handlers for the socket are set up on the connection event.
   // So long as the event handlers are added before the socket connects, they
   // will be available to the socket.
-  this.sessionSockets.on('connection', function(err, socket, session) {
+  this.sessionSocketIO.on('connection', function(err, socket, session) {
     console.log('CommandCenter: connection event.');
     if (err) {
+      console.log("Error from sessionSocket.on('connection'), throwing.");
       throw(err);
     }
 
@@ -224,26 +239,25 @@ function CommandCenter(server, sessionStore, cookieParser) {
     }
 
     // Store anything extra on the socket object.
+    // TODO: Is this really necessary? All the socket handler functions should
+    // receive the session anyway.
     socket.username = session.username;
   });
 }
 
-// Allow the client code to add additional socket events.
-// TODO: I don't follow how this works - surely these would need to be added
-// before CommandCenter is instantiated or else they will not be bound in the
-// 'bind event handlers to the socket' block.
-//
-// TODO: Merge addEventHandler and addNamespacedEventHandler.
+// Allow the consuming code to add additional socket events.
+// All socket events are bound when the client connects.
+// TODO: Error if a reserved event name is used.
 CommandCenter.prototype.addEventHandler = function (event, fn) {
   console.log ('CommandCenter: Adding event handler for event=%s.', event);
   this.socketEvents[event] = fn;
 };
 
-// Allow the client code to add namespaced socket events.
+// Allow consuming code to add namespaced socket events.
 CommandCenter.prototype.addNamespacedEventHandler = function (ns, event, fn) {
   ns = '/' + ns;
   console.log('CommandCenter: Adding namespaced event handler ns=%s event=%s.', ns, event);
-  this.sessionSockets.of(ns).on(event, fn);
+  this.sessionSocketIO.of(ns).on(event, fn);
 };
 
 // --------------------------------------------------
@@ -253,8 +267,10 @@ CommandCenter.prototype.addNamespacedEventHandler = function (ns, event, fn) {
 // TODO: Merge these methods as much as possible. Use named arguments (pass an
 // object in).
 
+// Room emitters.
+// ----
 // Send the user list of a given room to the socket.
-CommandCenter.prototype.sendUserList = function(socket, roomName) {
+CommandCenter.prototype.sendRoomUserList = function(socket, roomName) {
   var users = _.pluck(this.io.sockets.clients(roomName), 'username');
   users = _.uniq(users);
 
@@ -264,8 +280,8 @@ CommandCenter.prototype.sendUserList = function(socket, roomName) {
   });
 };
 
-// Send the user list of a given room to the socket.
-CommandCenter.prototype.broadcastUserList = function(socket, roomName, userList) {
+// Send the user list of a given room to the room.
+CommandCenter.prototype.broadcastRoomUserList = function(socket, roomName, userList) {
   socket.broadcast.to(roomName).emit('userList', {
     roomName: roomName,
     users: userList
@@ -283,6 +299,13 @@ CommandCenter.prototype.sendRoomMessage = function(socket, roomName, usernameFro
     });
 };
 
+// Send a message to all clients in a room.
+CommandCenter.prototype.roomEmit = function(roomName, eventName, eventData) {
+  this.io.sockets.in(roomName).emit(eventName, eventData);
+};
+
+// Socket emitters.
+// ----
 // Send a direct message from a user to a socket.
 //
 // roomName is optional - if not specified then the message will appear in all

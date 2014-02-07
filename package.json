@@ -5,9 +5,7 @@
   "scripts": {},
   "dependencies": {
     "ejs": "*",
-    "socket.io": "~0.9.13",
     "less-middleware": "~0.1.9",
-    "session.socket.io": "git://github.com/euoia/session.socket.io#master",
     "underscore": "~1.4.3",
     "validator": "~0.4.28"
   }
