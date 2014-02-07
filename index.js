@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Fri 07 Feb 2014 12:25:00 PM EST
+//  Last Modified:      Fri 07 Feb 2014 03:02:57 PM EST
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -37,7 +37,7 @@
 // Module dependencies
 // ----
 // socket.io         - Only used for the following line (TODO: Can we remove this?):
-//    this.io = sio.listen(server);
+//    this.sessionSocketIO.io = sio.listen(server);
 // session.socket.io - https://github.com/wcamarao/session.socket.io
 //                     This helpful module passes the Connect session object to
 //                     socket.io event handler functions. This way, socket handler
@@ -51,7 +51,7 @@
 // Node web server object (returned by http.createServer) -
 //    Passed to constructor as server. Only used for the following line (TODO:
 //    Can we remove this?):
-//      this.io = sio.listen(server);
+//      this.sessionSocketIO.io = sio.listen(server);
 //
 // Express (actually Connect middleware) session store -
 //    Passed to constructor as sessionStore. Only used for the following line
@@ -62,7 +62,7 @@
 // Express (actually Connect middleware) cookie parser -
 //    Passed to constructor as cookieParser. Only used for the following line
 //    (TODO: Can we remove this?):
-//      SessionSockets(this.io, sessionStore, cookieParser);
+//      SessionSockets(this.sessionSocketIO.io, sessionStore, cookieParser);
 //
 // Express (actually Connect middleware) session object -
 //    Passed to initSession function, passed to socket.io events.
@@ -95,14 +95,14 @@ var _ = require('underscore'),
 // eventListener allows consuming code to listen to events occurring in the
 // Command Center. The following events are emitted:
 // 'subscribe': A socket has subscribed to a room.
-function CommandCenter(sessionSocketIO, eventListener) {
+function CommandCenter(sessionSocketIO, eventEmitter) {
   var $this = this;
 
   this.sessionSocketIO = sessionSocketIO;
 
   var emit = function (eventName, eventData) {
-    if (eventListener) {
-      eventListener.emit(eventName, eventData);
+    if (eventEmitter) {
+      eventEmitter.emit(eventName, eventData);
     }
   };
 
@@ -114,7 +114,7 @@ function CommandCenter(sessionSocketIO, eventListener) {
         return;
       }
 
-      var usernamesInRoomBeforeJoining = _.pluck($this.io.sockets.clients(eventData.roomName), 'username');
+      var usernamesInRoomBeforeJoining = _.pluck($this.sessionSocketIO.io.sockets.clients(eventData.roomName), 'username');
 
       // Add the socket to the room.
       socket.join(eventData.roomName);
@@ -125,7 +125,7 @@ function CommandCenter(sessionSocketIO, eventListener) {
         session.save();
       }
 
-      var usernamesInRoomAfterJoining = _.pluck($this.io.sockets.clients(eventData.roomName), 'username');
+      var usernamesInRoomAfterJoining = _.pluck($this.sessionSocketIO.io.sockets.clients(eventData.roomName), 'username');
 
       // Send the user list to the socket.
       // A user may have multiple socket connections so we need the unique list of usernames.
@@ -140,7 +140,7 @@ function CommandCenter(sessionSocketIO, eventListener) {
         $this.broadcastRoomUserList(socket, eventData.roomName, _.uniq(usernamesInRoomAfterJoining));
       }
 
-      emit('subscribe');
+      emit('subscribe', {roomName: eventData.roomName});
 
       console.log('CommandCenter: subscribe event, success: %s subscribed to %s.', session.usernane, eventData.roomName);
     },
@@ -180,7 +180,7 @@ function CommandCenter(sessionSocketIO, eventListener) {
         room = socketRoomName.substr(1);
 
         // Determine whether this is the last socket connection this user has to this room.
-        usernamesInRoom                = _.pluck($this.io.sockets.clients(room), 'username');
+        usernamesInRoom                = _.pluck($this.sessionSocketIO.io.sockets.clients(room), 'username');
         usernamesInRoomAfterLeaving    = _.without(usernamesInRoom, socket.username);
         timesInRoom                    = usernamesInRoom.length - usernamesInRoomAfterLeaving.length;
 
@@ -271,7 +271,7 @@ CommandCenter.prototype.addNamespacedEventHandler = function (ns, event, fn) {
 // ----
 // Send the user list of a given room to the socket.
 CommandCenter.prototype.sendRoomUserList = function(socket, roomName) {
-  var users = _.pluck(this.io.sockets.clients(roomName), 'username');
+  var users = _.pluck(this.sessionSocketIO.io.sockets.clients(roomName), 'username');
   users = _.uniq(users);
 
   socket.emit('userList', {
@@ -301,7 +301,7 @@ CommandCenter.prototype.sendRoomMessage = function(socket, roomName, usernameFro
 
 // Send a message to all clients in a room.
 CommandCenter.prototype.roomEmit = function(roomName, eventName, eventData) {
-  this.io.sockets.in(roomName).emit(eventName, eventData);
+  this.sessionSocketIO.io.sockets.in(roomName).emit(eventName, eventData);
 };
 
 // Socket emitters.

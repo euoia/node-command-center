@@ -13,7 +13,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     $this = this;
 
     // jQuery options.
-    this.userListDiv = $(options.userListDiv);
+    this.roomUserListDiv = $(options.roomUserListDiv);
     this.roomMatchListDiv = $(options.roomMatchListDiv);
     this.messagesUl = $(options.messagesUl);
     this.messageScroll = $(options.messageScroll);
@@ -105,22 +105,22 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
   };
 
   CommandCenter.prototype.initRoomUserList = function(users) {
-    $('<div class="roomName">' + this.roomName + ' users</div>')
-      .appendTo(this.userListDiv);
+    $('<div class="roomNameTitle">Players</div>')
+      .appendTo(this.roomUserListDiv);
 
-    this.roomUserList = $('<ul id="roomUserList" />').appendTo(this.userListDiv);
+    this.roomUserList = $('<ul id="roomUserList" />').appendTo(this.roomUserListDiv);
   };
 
   CommandCenter.prototype.updateRoomUserList = function(users) {
     this.roomUserList.html('');
 
     for (var i in users) {
-      $('<li class="username">' + users[i] + '</li>').appendTo(this.roomUserList);
+      $('<li class="username usernameList">' + users[i] + '</li>').appendTo(this.roomUserList);
     }
   };
 
   CommandCenter.prototype.initRoomMatchList = function(users) {
-    $('<div class="roomMatchListTitle">Games</div>')
+    $('<div id="roomMatchListTitle">Current games</div>')
       .appendTo(this.roomMatchListDiv);
 
     this.roomMatchList = $('<ul id="roomMatchList" />').appendTo(this.roomMatchListDiv);
@@ -129,9 +129,22 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
   CommandCenter.prototype.updateRoomMatchList = function(matches) {
     this.roomMatchList.html('');
 
-    for (var matchID in matches) {
-      $('<li class="username">' + matches[matchID].gameID + ' created by ' +
-        matches[matchID].owner + '</li>').appendTo(this.roomMatchList);
+    var joinMatch = function (matchID) {
+      console.log("Trying to join %s", matchID);
+        this.emit('joinMatch', {
+          matchID: matchID
+        });
+    }.bind(this);
+
+    for (var i = 0; i < matches.length; i += 1) {
+      var match = matches[i];
+      var matchElem = $('<li class="match"><div class="matchContainer">' +
+        '<img class="gameIcon" src="img/games/' +
+        match.gameID + '/icon.png" /><div class="matchText">' +
+        match.gameID +' by ' + match.owner +
+        '</div></div></li>').appendTo(this.roomMatchList);
+
+      matchElem.click(joinMatch.bind(this, match.id));
     }
   };
 
