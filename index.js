@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Sun 09 Feb 2014 04:43:39 PM EST
+//  Last Modified:      Sun 09 Feb 2014 05:25:47 PM EST
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -239,7 +239,11 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
     // TODO: Is this really necessary? All the socket handler functions should
     // receive the session anyway.
     socket.username = session.username;
-  });
+
+    // Disconnect any other sockets associated with this username.
+    // TODO: This ought to be configurable.
+    this.disconnectOtherSocketsMatchingUsername(session.username, socket);
+  }.bind(this));
 }
 
 // Allow the consuming code to add additional socket events.
@@ -256,6 +260,25 @@ CommandCenter.prototype.addNamespacedEventHandler = function (ns, event, fn) {
   console.log('CommandCenter: Adding namespaced event handler ns=%s event=%s.', ns, event);
   this.sessionSocketIO.of(ns).on(event, fn);
 };
+
+// Force disconnection of any other sockets matching this usename.
+// This may be used to enforce a one-username-one-socket policy.
+// Leaves the socket provided connected.
+CommandCenter.prototype.disconnectOtherSocketsMatchingUsername = function (username, socket) {
+  this.getSocketsMatchingUsername(username).forEach(function(s) {
+    if (socket === s) {
+      return;
+    }
+
+    if (s === undefined) {
+      return;
+    }
+
+    this.sendNotification(s, 'You have connected in another window, disconnecting.');
+    s.disconnect();
+  }.bind(this));
+};
+
 
 // --------------------------------------------------
 // Emitters.
