@@ -10,8 +10,6 @@
 //  * This acts as a facade for the socket object through CommandCenter.prototype.emit.
 define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
   function CommandCenter(options) {
-    $this = this;
-
     // jQuery options.
     this.roomUserListDiv = $(options.roomUserListDiv);
     this.messagesUl = $(options.messagesUl);
@@ -30,30 +28,27 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
     // Bind to the message entry form.
     this.messageEntryForm.submit(function() {
-      $this.handleMessageInput.call($this);
+      this.handleMessageInput();
       return false;
-    });
+    }.bind(this));
 
+    // Incoming Socket.io events.
     this.socketEvents = {
-      'connect': function() {
-        // Upon connecting with the socket.
-        $this.emit('subscribe');
-      },
-      'userList': function(data) {
-        // Receive a user list for a room.
-        console.log('Received userList.', data);
-        $this.updateRoomUserList(data.users);
-      },
-      'message': function(data) {
+      // Upon connecting with the socket.
+      'connect': this.emit.bind(this, 'subscribe'),
+      // Receive a user list for a room.
+      'userList': this.updateRoomUserList.bind(this),
+      'message': function(eventData) {
         // Receive a message.
         // Note that data.roomName is optional.
-        $this.addMessage(data.time, data.username, data.message);
-      },
-      'notification': function(data) {
+        this.addMessage(eventData.time, eventData.username, eventData.message);
+      }.bind(this),
+      'notification': function(eventData) {
         // Receive a notification.
         // Note that data.roomName is optional.
-        $this.addNotification(data.time, data.message);
-      }
+        this.addNotification(eventData.time, eventData.message);
+      }.bind(this),
+      'disconnect': this.disconnection.bind(this)
     };
 
     console.log('new chat, roomName: %s', roomName);
@@ -69,7 +64,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
       this.listen();
 
       // Init user list HMTL.
-      $this.initRoomUserList();
+      this.initRoomUserList();
     } else {
       console.log('reconnecting');
       this.socket.socket.reconnect();
@@ -92,8 +87,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     for (var event in this.socketEvents) {
       this.socket.on(event, this.socketEvents[event].bind(this));
     }
-
-    var $this = this;
   };
 
   CommandCenter.prototype.initRoomUserList = function(users) {
@@ -103,7 +96,8 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     this.roomUserList = $('<ul id="roomUserList" />').appendTo(this.roomUserListDiv);
   };
 
-  CommandCenter.prototype.updateRoomUserList = function(users) {
+  CommandCenter.prototype.updateRoomUserList = function(eventData) {
+    var users = eventData.users;
     this.roomUserList.html('');
 
     for (var i in users) {
@@ -119,7 +113,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
     });
 
     // We add our message directly since the server will not echo it back to us.
-    $this.addMessage(Date.now(), this.username, message);
+    this.addMessage(Date.now(), this.username, message);
   };
 
   CommandCenter.prototype.addMessage = function(time, username, message) {
@@ -150,6 +144,12 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
       args = [];
 
     this.messageEntry.val('');
+
+    if (this.socket.socket.connected === false) {
+      this.addNotification(Date.now(), 'Not connected.');
+      return;
+    }
+
 
     // Messages that start with a forward-slash are treated as commands.
     if (message.charAt(0) === '/') {
@@ -214,6 +214,10 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
   // Allow the client code to add additional socket events.
   CommandCenter.prototype.addListener = function (event, fn) {
     this.socketEvents[event] = fn;
+  };
+
+  CommandCenter.prototype.disconnection = function(eventData) {
+    this.addNotification(Date.now(), 'Disconnected from server.');
   };
 
   return CommandCenter;
