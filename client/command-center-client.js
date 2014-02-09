@@ -151,10 +151,13 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
     this.messageEntry.val('');
 
+    // Messages that start with a forward-slash are treated as commands.
     if (message.charAt(0) === '/') {
-      // Looks like a command. What is the first word?
       command = message.substr(1).split(/\s+/)[0];
-      if (this.commands[command] !== undefined && typeof(this.commands[command]) === 'function') {
+
+      if (this.commands[command] !== undefined &&
+        typeof(this.commands[command]) === 'function'
+      ) {
         // Split arguments into an array.
         args = message.substr(command.length + 1).split(/\s+/);
         args = _.without(args, '');

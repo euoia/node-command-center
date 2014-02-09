@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Fri 07 Feb 2014 03:02:57 PM EST
+//  Last Modified:      Sun 09 Feb 2014 04:43:39 PM EST
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -219,9 +219,6 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
     }
   };
 
-  // Array of {ns: ns, event: event, fn: fn}
-  this.namespacedSocketEvents = [];
-
   // Event handlers for the socket are set up on the connection event.
   // So long as the event handlers are added before the socket connects, they
   // will be available to the socket.
@@ -234,7 +231,7 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
 
     // Bind event handlers to the socket.
     for (var event in $this.socketEvents) {
-      console.log('CommandCenter: Bound event to socket: %s.', event);
+      console.log('CommandCenter: Bound event to socket for %s: %s.', session.username, event);
       socket.on(event, $this.socketEvents[event].bind(this, socket, session));
     }
 
@@ -304,6 +301,43 @@ CommandCenter.prototype.roomEmit = function(roomName, eventName, eventData) {
   this.sessionSocketIO.io.sockets.in(roomName).emit(eventName, eventData);
 };
 
+CommandCenter.prototype.getSocketsMatchingUsername = function(username) {
+  var sockets = [];
+
+  for (var socketID in this.sessionSocketIO.io.sockets.sockets) {
+    if (this.sessionSocketIO.io.sockets.sockets.hasOwnProperty(socketID) === false) {
+      continue;
+    }
+
+    var socket = this.sessionSocketIO.io.sockets.sockets[socketID];
+
+    if (socket.username === username) {
+      sockets.push(socket);
+    }
+  }
+
+  return sockets;
+};
+
+// Send an event to all sockets matching a username.
+CommandCenter.prototype.usernameEmit = function(username, eventName, eventData) {
+  console.log("usernameEmit", username, eventName, eventData);
+
+  this.getSocketsMatchingUsername(username).forEach(function(socket) {
+    socket.emit(eventName, eventData);
+  }.bind(this));
+};
+
+// Send an event to all sockets matching a username.
+CommandCenter.prototype.notifyUsername = function(username, message, roomName) {
+  console.log("notifyUsername", username, message);
+
+  this.getSocketsMatchingUsername(username).forEach(function(socket) {
+    this.sendNotification(socket, message, roomName);
+  }.bind(this));
+};
+
+
 // Socket emitters.
 // ----
 // Send a direct message from a user to a socket.
@@ -334,6 +368,7 @@ CommandCenter.prototype.sendRoomNotification = function(socket, roomName, messag
 //
 // roomName is optional - if not specified then the message will appear in all
 // room windows.
+// TODO: Rename to notifyRoom, etc.
 CommandCenter.prototype.sendNotification = function(socket, message, roomName) {
   message = sanitize(message).entityEncode();
   socket.emit('notification', {
