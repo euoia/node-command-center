@@ -60,7 +60,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
     if (this.socket === null) {
       console.log('connecting for the first time');
-      io.set('transports', ['xhr-polling']);
       this.socket = io.connect('/');
       this.listen();
 
