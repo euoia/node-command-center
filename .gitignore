@@ -47,3 +47,7 @@ node_modules
 # Other #
 ######################
 .livereload
+
+# Bower dependencies #
+######################
+client/components
