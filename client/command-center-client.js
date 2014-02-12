@@ -123,7 +123,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
       "<span class='message'>" + message + "</span>" +
       "</li>");
 
-    Util.scrollDown(this.messageEntry);
+    Util.scrollDown(this.messageScroll);
   };
 
   CommandCenter.prototype.addNotification = function(time, message) {
@@ -133,7 +133,7 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
       "<span class='notification'>" + message + "</span>" +
       "</li>");
 
-    Util.scrollDown(this.messageEntry);
+    Util.scrollDown(this.messageScroll);
   };
 
 
