@@ -107,7 +107,6 @@ define(['jquery', 'underscore', 'socket.io', 'util'], function($, _, io, Util) {
 
   // Send a message to the current room.
   CommandCenter.prototype.sendMessage = function(message) {
-    console.log('sendMessage');
     this.emit('message', {
       message: message
     });
