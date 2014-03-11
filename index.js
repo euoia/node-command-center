@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Sun 09 Feb 2014 05:25:47 PM EST
+//  Last Modified:      Tue 11 Mar 2014 10:14:56 AM EDT
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -110,7 +110,7 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
   this.socketEvents  = {
     'subscribe': function(socket, session, eventData) {
       if (eventData.roomName === undefined) {
-        console.log('CommandCenter: subscribe event, warning: %s did not specify a roomName.', session.username);
+        console.log('[CommandCenter] <= subscribe [%s] fail: no roomName', session.username);
         return;
       }
 
@@ -142,12 +142,12 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
 
       emit('subscribe', {roomName: eventData.roomName});
 
-      console.log('CommandCenter: subscribe event, success: %s subscribed to %s.', session.usernane, eventData.roomName);
+      console.log('[CommandCenter] <= subscribe [%s] [%s] success', session.username, eventData.roomName);
     },
     'unsubscribe': function(socket, session, eventData) {
 
       if (eventData.roomName === undefined) {
-        console.log(util.format('CommandCenter: unsubscribe event, warning: %s did not specify a roomName.', session.username));
+        console.log(util.format('[CommandCenter] <= unsubscribe [%s] fail: no roomName', session.username));
         return;
       }
 
@@ -158,7 +158,7 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
         util.format('%s has left %s.', session.username, eventData.roomName));
 
       console.log(util.format(
-        'CommandCenter: unsubscribe event, success: %s unsubscribed from %s.',
+        '[CommandCenter] unsubscribe event, success: %s unsubscribed from %s.',
         session.username,
         eventData.roomName));
     },
@@ -175,7 +175,8 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
 
       // For all rooms associated with the socket check if it is the last
       // socket for that room for this user, and if so issue a message to the room.
-      for (socketRoomName in rooms) {
+
+      _.each(rooms, function(socketRoom, socketRoomName) {
         // Strip the socket.io leading '/'.
         room = socketRoomName.substr(1);
 
@@ -188,33 +189,34 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
         if (timesInRoom === 1) {
           $this.sendRoomNotification(socket, room, util.format('%s has disconnected from %s.', session.username, room));
           $this.broadcastRoomUserList(socket, room, _.uniq(usernamesInRoomAfterLeaving));
+          emit('disconnect', {username: socket.username, roomName: room});
         }
-      }
+      });
 
-      console.log('CommandCenter: disconnect event, success: %s disconnected.', session.username);
+      console.log('[CommandCenter] <= disconnect [%s] success', session.username);
     },
     'message': function(socket, session, eventData) {
       // TODO: This kind of checking and logging is probably OTT. We could have some kind of separate validation module.
       if (eventData.roomName === undefined) {
-        console.log('CommandCenter: message event, warning: %s sent a message but did not specify roomName.', session.username);
+        console.log('[CommandCenter] <= message [%s] fail: no roomName', session.username);
         return;
       }
 
       if (eventData.message === undefined) {
-        console.log('CommandCenter: message event, warning: %s sent a message but did not specify message.', session.username);
+        console.log('[CommandCenter] <= message [%s] [%s] fail: no message', session.username, eventData.roomName);
         return;
       }
 
-      console.log('CommandCenter: message event, success: %s sent the following message to %s: %s', session.username, eventData.roomName, eventData.message);
+      console.log('[CommandCenter] <= message [%s] [%s] [%s]', session.username, eventData.roomName, eventData.message);
       $this.sendRoomMessage(socket, eventData.roomName, session.username, eventData.message);
     },
     'userList': function(socket, session, eventData) {
       if (eventData.roomName === undefined) {
-        console.log('CommandCenter: userList event, warning: %s requested userList but did not specify roomName.', session.username);
+        console.log('[CommandCenter] <= userList [%s] fail: no roomName', session.username);
         return;
       }
 
-      console.log('CommandCenter: userList event, success: %s requested userList.', session.username);
+      console.log('[CommandCenter] <= userList [%s] [%s]', session.username, eventData.roomName);
       $this.sendRoomUserList(socket, eventData.roomName);
     }
   };
@@ -223,15 +225,21 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
   // So long as the event handlers are added before the socket connects, they
   // will be available to the socket.
   this.sessionSocketIO.on('connection', function(err, socket, session) {
-    console.log('CommandCenter: connection event.');
+    console.log('[CommandCenter] <= connection [%s] [%s]', session.username, socket.handshake.address.address);
     if (err) {
-      console.log("Error from sessionSocket.on('connection'), throwing.");
-      throw(err);
+      console.log("[CommandCenter] <= connection [%s] [%s] Error: %s",
+        session.username,
+        socket.handshake.address.address,
+        err.message);
+      return;
     }
 
     // Bind event handlers to the socket.
     for (var event in $this.socketEvents) {
-      console.log('CommandCenter: Bound event to socket for %s: %s.', session.username, event);
+      console.log('[CommandCenter] <= connection [%s] [%s]: bind [%s]',
+        session.username,
+        socket.handshake.address.address,
+        event);
       socket.on(event, $this.socketEvents[event].bind(this, socket, session));
     }
 
@@ -250,14 +258,14 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
 // All socket events are bound when the client connects.
 // TODO: Error if a reserved event name is used.
 CommandCenter.prototype.addEventHandler = function (event, fn) {
-  console.log ('CommandCenter: Adding event handler for event=%s.', event);
+  console.log ('[CommandCenter] addEventHandler [%s]', event);
   this.socketEvents[event] = fn;
 };
 
 // Allow consuming code to add namespaced socket events.
 CommandCenter.prototype.addNamespacedEventHandler = function (ns, event, fn) {
   ns = '/' + ns;
-  console.log('CommandCenter: Adding namespaced event handler ns=%s event=%s.', ns, event);
+  console.log('[CommandCenter] addNamespacedEventHandler [%s] [%s]', ns, event);
   this.sessionSocketIO.of(ns).on(event, fn);
 };
 
@@ -344,8 +352,6 @@ CommandCenter.prototype.getSocketsMatchingUsername = function(username) {
 
 // Send an event to all sockets matching a username.
 CommandCenter.prototype.usernameEmit = function(username, eventName, eventData) {
-  console.log("usernameEmit", username, eventName, eventData);
-
   this.getSocketsMatchingUsername(username).forEach(function(socket) {
     socket.emit(eventName, eventData);
   }.bind(this));
@@ -353,8 +359,6 @@ CommandCenter.prototype.usernameEmit = function(username, eventName, eventData) 
 
 // Send an event to all sockets matching a username.
 CommandCenter.prototype.notifyUsername = function(username, message, roomName) {
-  console.log("notifyUsername", username, message);
-
   this.getSocketsMatchingUsername(username).forEach(function(socket) {
     this.sendNotification(socket, message, roomName);
   }.bind(this));
@@ -409,7 +413,6 @@ CommandCenter.prototype.sendNotification = function(socket, message, roomName) {
 // Initialize the express session object.
 // TODO: Do not extend the session object.
 CommandCenter.initSession = function(session) {
-  console.log('CommandCenter: initSession', session);
   session.rooms = [];
 };
 
