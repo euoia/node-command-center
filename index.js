@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Tue 11 Mar 2014 10:14:56 AM EDT
+//  Last Modified:      Tue 11 Mar 2014 10:51:50 AM EDT
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -225,7 +225,13 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
   // So long as the event handlers are added before the socket connects, they
   // will be available to the socket.
   this.sessionSocketIO.on('connection', function(err, socket, session) {
-    console.log('[CommandCenter] <= connection [%s] [%s]', session.username, socket.handshake.address.address);
+    if (session === undefined) {
+      console.log("[CommandCenter] <= connection [%s] Error: %s",
+        socket.handshake.address.address,
+        "session was undefined");
+      return;
+    }
+
     if (err) {
       console.log("[CommandCenter] <= connection [%s] [%s] Error: %s",
         session.username,
