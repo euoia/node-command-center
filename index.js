@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Tue 11 Mar 2014 11:00:46 AM EDT
+//  Last Modified:      Tue 11 Mar 2014 08:28:00 PM EDT
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -142,7 +142,7 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
 
       emit('subscribe', {roomName: eventData.roomName});
 
-      console.log('[CommandCenter] <= subscribe [%s] [%s] success', session.username, eventData.roomName);
+      console.log('[CommandCenter] <= subscribe [%s] [%s]: success', session.username, eventData.roomName);
     },
     'unsubscribe': function(socket, session, eventData) {
 
@@ -158,7 +158,7 @@ function CommandCenter(sessionSocketIO, eventEmitter) {
         util.format('%s has left %s.', session.username, eventData.roomName));
 
       console.log(util.format(
-        '[CommandCenter] unsubscribe event, success: %s unsubscribed from %s.',
+        '[CommandCenter] <= unsubscribe [%s] [%s]: success',
         session.username,
         eventData.roomName));
     },
@@ -387,7 +387,7 @@ CommandCenter.prototype.sendMessage = function(socket, usernameFrom, message, ro
   });
 };
 
-// Send a notification to a room; exluding a single socket.
+// Send a notification to a room; excluding a single socket.
 CommandCenter.prototype.sendRoomNotification = function(socket, roomName, message) {
   message = sanitize(message).entityEncode();
   socket.broadcast.to(roomName).emit('notification', {
