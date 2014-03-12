@@ -1,5 +1,5 @@
 //  Created:            Wed 30 Oct 2013 11:19:04 AM GMT
-//  Last Modified:      Tue 11 Mar 2014 08:28:00 PM EDT
+//  Last Modified:      Tue 11 Mar 2014 08:28:45 PM EDT
 //  Author:             James Pickard <james.pickard@gmail.com>
 // --------------------------------------------------
 // Summary
@@ -388,6 +388,7 @@ CommandCenter.prototype.sendMessage = function(socket, usernameFrom, message, ro
 };
 
 // Send a notification to a room; excluding a single socket.
+// TODO: Need a way to exclude multiple sockets.
 CommandCenter.prototype.sendRoomNotification = function(socket, roomName, message) {
   message = sanitize(message).entityEncode();
   socket.broadcast.to(roomName).emit('notification', {

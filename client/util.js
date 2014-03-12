@@ -21,7 +21,7 @@ define(function() {
   Util.scrollDown = function(selector) {
     // Scroll the selector to the bottom.
     selector.animate({
-      scrollTop: 9999
+      scrollTop: 9999999
     }, 400);
 
     // Clear the animation otherwise the user cannot scroll back up.
