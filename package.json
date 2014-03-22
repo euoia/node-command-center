@@ -6,7 +6,7 @@
   "dependencies": {
     "ejs": "*",
     "less-middleware": "~0.1.9",
-    "underscore": "~1.4.3",
+    "underscore": "~1.6.0",
     "validator": "~0.4.28"
   }
 }
