@@ -1,6 +1,28 @@
 {
   "name": "command-center",
+  "description": "socket.io 0.9 helper library",
   "version": "0.0.4",
+  "author": {
+	"name": "James Pickard",
+	"email": "james.pickard@gmail.com"
+  },
+  "homepage": "https://github.com/euoia/node-command-center",
+  "bugs": {
+    "mail": "james.pickard@gmail.com",
+    "url": "https://github.com/euoia/node-command-center/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://opensource.org/licenses/MIT"
+    }
+  ],
+  "main": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/euoia/node-command-center.git"
+  },
+  "readmeFilename": "README.md",
   "private": false,
   "scripts": {},
   "dependencies": {
