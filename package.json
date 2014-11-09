@@ -24,11 +24,17 @@
   },
   "readmeFilename": "README.md",
   "private": false,
-  "scripts": {},
+  "scripts": {
+    "test": "node test/basic_test.js"
+  },
   "dependencies": {
     "ejs": "*",
     "less-middleware": "~0.1.9",
     "underscore": "~1.6.0",
     "validator": "~0.4.28"
+  },
+  "devDependencies": {
+    "session.socket.io": "*",
+    "socket.io": "0.9.16"
   }
 }
